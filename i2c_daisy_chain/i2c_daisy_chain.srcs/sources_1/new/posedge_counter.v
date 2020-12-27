@@ -1,21 +1,11 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Company: 
 // Engineer: Dhruv Shah
-// 
 // Create Date: 12/22/2020 11:56:35 AM
-// Design Name: 
 // Module Name: SIPO
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
 // Description: 
 // 9 bit counter with tick at 8th bit.
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
+//  
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
@@ -37,6 +27,6 @@ assign r_next = (reset == 1'b1) ? 0:
     
 
 // output logic
-assign tick = (r_reg==2**(N-1)-1) ? 1'b1 : 1'b0;
+assign tick = (r_reg==2**(N-1)-1) ? SCL : 1'b0;  // Clock Masking
 
 endmodule

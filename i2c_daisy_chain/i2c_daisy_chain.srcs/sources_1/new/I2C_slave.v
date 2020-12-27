@@ -47,7 +47,7 @@ reg i2c_slave_ack ,i2c_reg_ack;
 reg [6:0] address_reg_next;
 reg [6:0] address_reg_current;
 reg c_start,n_start,c_stop,n_stop;
-wire data_active;
+wire data_active,piso_output;
 // parameters
 parameter read = 1'b1;  
 parameter write = 1'b0;
@@ -56,7 +56,7 @@ parameter burst = 1'b0;
 
 posedge_counter DUT(.SCL(SCL),.tick(tick),.reset(internal_reset));  
 serial_input_parallel_output DUT1(.SCL(SCL),.tick(tick),.reset(internal_reset),.PO(PO),.SDA(SDA));  
-parallel_input_serial_output DUT2(.data_in(data_in),.enable(enable_piso),.SCL(SCL),.tick(tick),.data_active(data_active),.serial_output(send));
+parallel_input_serial_output DUT2(.data_in(data_in),.enable(enable_piso),.SCL(SCL),.tick(tick),.data_active(data_active),.serial_output(piso_output));
 
 // Define the States 
 parameter INIT = 3'b000;
@@ -64,17 +64,7 @@ parameter READ = 3'b001;
 parameter WRITE_1 = 3'b011;   // Addr
 parameter WRITE_2 = 3'b100;   // Data
 parameter IDLE= 3'b101;   // Data
-// Initialize Values
-always @(posedge tick or negedge resetn) begin  // State transitions have to occur at posedge of tick
-    if (!resetn) begin // Reset and Initialize all values of reg here
-        c_state <= IDLE;
-        address_reg_current <= 8'h00; // Random Initial Value - CHange Later
-    end else begin
-        c_state <= n_state;
-        address_reg_current <= address_reg_next;
-        
-    end
-end
+
 always @(posedge SDA) // STOP condition
     if (SCL == 1'b1) 
         c_stop <= 1;
@@ -86,7 +76,19 @@ always @(negedge SDA)       // START CONDITION
     else begin
         c_start <= n_start;
     end
-    
+
+// Initialize Values
+always @(posedge SCL or negedge resetn) begin  // State transitions have to occur at posedge of tick
+    if (!resetn) begin // Reset and Initialize all values of reg here
+        c_state <= IDLE;
+        address_reg_current <= 8'h00; // Random Initial Value - CHange Later
+    end else begin
+        c_state <= n_state;
+        address_reg_current <= address_reg_next;
+        
+    end
+end 
+   
 // Tasks of each state
 always @(posedge SCL) begin
     
@@ -98,6 +100,10 @@ always @(posedge SCL) begin
                     // SEND ACK  
                     i2c_slave_ack <= 1;
                 end  
+                if(PO[0] == read) begin
+                    control_reg <= {read,1'b0};
+                    enable_piso <= 1;
+                end
             end else begin
                 if (i2c_slave_ack) begin 
                     send_ready <= 1;
@@ -110,8 +116,8 @@ always @(posedge SCL) begin
     
             enable_piso <= 0;
             if (tick) begin 
-                address_reg_next <= PO[7:1];
-                opcode <= PO[0];
+                address_reg_next <= PO[6:0];
+                opcode <= PO[7];
                 i2c_reg_ack <= 1;
                 control_reg <= {write,1'b0};
             end else begin
@@ -138,10 +144,11 @@ always @(posedge SCL) begin
           end
           READ:begin
             if(tick) begin
-                control_reg <= {read,1'bx};
+                control_reg <= {read,1'b1}; // Garbage Value in ACk
                 enable_piso <= 1;       
             end
-            send_ready <= data_active;    
+            send_ready <= data_active;
+            send <= piso_output;    
           end                  
     endcase
 end
@@ -149,13 +156,21 @@ end
 always @(*) begin  // NEXT STATE COMBO LOGIC
     case (c_state)
         IDLE:begin
-            if(c_start) 
+            if(c_start) begin
                 n_state = INIT;
+                n_start = 0;
+                internal_reset = 1;
+             end
+             else
+                internal_reset = 0;
         end
         INIT: begin
-            if (PO[0] == read) n_state = READ;
-            else n_state = WRITE_1;
-            
+            if (PO[0] == read & tick == 1) begin
+                n_state = READ;
+            end
+            else if (PO[0] == write & tick == 1) begin
+                n_state = WRITE_1;
+            end
             if (c_start) begin
                 n_state = INIT;
                 n_start = 0;
@@ -172,8 +187,9 @@ always @(*) begin  // NEXT STATE COMBO LOGIC
                 internal_reset = 0;                
         end
         WRITE_1:begin
-            n_state = WRITE_2;
-             if (c_start) begin
+            if (tick == 1) 
+                n_state = WRITE_2;
+            if (c_start) begin
                 n_state = INIT;
                 n_start = 0;
                 internal_reset = 1;
@@ -189,8 +205,8 @@ always @(*) begin  // NEXT STATE COMBO LOGIC
                 internal_reset = 0;                
         end
         WRITE_2: begin
-            if (opcode == alternate) n_state = WRITE_1;
-            else if (opcode == burst) begin
+            if (opcode == alternate & tick == 1) n_state = WRITE_1;
+            else if (opcode == burst & tick == 1) begin
                 n_state = WRITE_2;
                 address_reg_next = address_reg_current + 1; // First register will be skipped
             end 
@@ -210,10 +226,11 @@ always @(*) begin  // NEXT STATE COMBO LOGIC
             else 
                 internal_reset = 0;                
         end
-        READ: begin
-            n_state = READ;
-            address_reg_next = address_reg_current + 1;
-
+        READ: begin  // #REVISIT
+            if (tick) begin        
+                n_state = READ;
+                address_reg_next = address_reg_current + 1;
+            end
             if (c_start) begin
                 n_state = INIT;
                 n_start = 0;
@@ -234,7 +251,7 @@ end
 
 assign SDA = (send_ready == 1) ? send:SDA;       // #RECONFIRM    What to send when i dont want to control the line?
 assign clk = tick;
-assign address = (tick == 1) ? address_reg_current:8'h00;      // Garbage Value
+assign address = address_reg_current;      // Garbage Value
 assign control_first_block = (tick == 1) ? control_reg:8'h00;  // Garbage Value 
 assign data_out = (tick == 1) ? data_reg:8'h00;                // Garbage Value 
 

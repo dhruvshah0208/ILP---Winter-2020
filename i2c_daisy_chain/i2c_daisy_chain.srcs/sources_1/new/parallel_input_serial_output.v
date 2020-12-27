@@ -1,24 +1,14 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
+// Engineer: Dhruv Shah
 // 
 // Create Date: 12/23/2020 01:19:00 PM
-// Design Name: 
 // Module Name: parallel_input_serial_output
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
+// Aim :-  
+// Once enabled this module will wait a clock cycle after negedge of tick and then serialize the parallel D_in 
 // 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-
 
 module parallel_input_serial_output
 #(parameter N = 8)
@@ -30,30 +20,35 @@ input tick,
 output data_active,// Data ACtive
 output serial_output
 );
-// We have to wait for one clock cycle after the negedge of tick and then start sending the serial outputs. (Better to send between 2 negedges of SCL)
-reg waiting_time = 0;
-reg output_ready = 0;
+
+reg activate;
 reg [N-1:0] data_reg;
 reg output_reg;
-always @(negedge tick) begin
-    waiting_time <= 1;
-    data_reg <= data_in;         // Store everything in a local register. Is the timing ok? #REVISIT
-end
-always @(posedge tick) begin
-    waiting_time <= 0;
-    output_ready <= 0;
-end
+reg output_ready;
 
-always @(negedge SCL) begin
-    if (waiting_time == 1) begin
-        output_ready <= 1;
-        output_reg <= data_reg[N-1];
-        data_reg <= {data_reg[N-2:0],1'bx};    
+always @(posedge SCL) begin
+    if (tick & enable) begin
+        output_ready = 0;
+        if (activate) 
+            data_reg = data_in;
+        activate = 0;
+    end
+    else if (enable) begin
+        activate = 1;
+     end else
+        activate = 0;
+            
+    if (activate) begin    
+        output_ready = 1;
+        output_reg = data_reg[N-1];
+        data_reg = {data_reg[N-2:0],1'b0}; // Garbage Value      
     end
 end
-// Assign outputs
+
+//Assign outputs
+assign serial_output = output_reg;
 assign data_active = enable & output_ready;
-assign serial_output = (output_ready == 1) ? output_reg:'bx;
+
 endmodule
 
 

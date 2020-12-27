@@ -12,8 +12,8 @@
 module posedge_counter
 #(parameter N=4)
 (
-input wire SCL, reset,
-output wire tick   // q added for simulation purposes
+input SCL,reset,
+output tick   // q added for simulation purposes
 );
 //signal declaration
 reg [N-1:0] r_reg;

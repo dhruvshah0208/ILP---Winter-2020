@@ -34,7 +34,7 @@ output clk,
 input resetn // Active Low reset
 );
 wire tick;
-reg internal_reset;
+reg internal_reset; // Active High Reset
 wire [7:0] PO; // Parallel Output
 reg enable_piso = 0;
 reg [2:0] c_state;    // STATES - INIT,WRITE_1,WRITE_2,READ,IDLE
@@ -47,6 +47,7 @@ reg i2c_slave_ack ,i2c_reg_ack;
 reg [6:0] address_reg_next;
 reg [6:0] address_reg_current;
 reg c_start,n_start,c_stop,n_stop;
+wire data_active;
 // parameters
 parameter read = 1'b1;  
 parameter write = 1'b0;
@@ -55,7 +56,7 @@ parameter burst = 1'b0;
 
 posedge_counter DUT(.SCL(SCL),.tick(tick),.reset(internal_reset));  
 serial_input_parallel_output DUT1(.SCL(SCL),.tick(tick),.reset(internal_reset),.PO(PO),.SDA(SDA));  
-parallel_input_serial_output DUT2(.data_in(data_in),.enable(enable_piso),.SCL(SCL),.tick(tick),.send_ready(send_ready),.serial_output(send));
+parallel_input_serial_output DUT2(.data_in(data_in),.enable(enable_piso),.SCL(SCL),.tick(tick),.data_active(data_active),.serial_output(send));
 
 // Define the States 
 parameter INIT = 3'b000;
@@ -74,18 +75,21 @@ always @(posedge tick or negedge resetn) begin  // State transitions have to occ
         
     end
 end
-always @(posedge SDA)// STOP condition
+always @(posedge SDA) // STOP condition
     if (SCL == 1'b1) 
         c_stop <= 1;
-    
+    else 
+        c_stop <= n_stop;
 always @(negedge SDA)       // START CONDITION
     if (SCL == 1'b1) 
         c_start <= 1;
-
+    else begin
+        c_start <= n_start;
+    end
+    
 // Tasks of each state
 always @(posedge SCL) begin
-    c_start <= n_start;
-    c_stop <= n_stop;
+    
     case(c_state) 
         INIT: begin
             enable_piso <= 0;
@@ -132,11 +136,13 @@ always @(posedge SCL) begin
                     end
                 end 
           end
-          READ:
+          READ:begin
             if(tick) begin
                 control_reg <= {read,1'bx};
                 enable_piso <= 1;       
-            end                      
+            end
+            send_ready <= data_active;    
+          end                  
     endcase
 end
 
@@ -144,67 +150,86 @@ always @(*) begin  // NEXT STATE COMBO LOGIC
     case (c_state)
         IDLE:begin
             if(c_start) 
-                n_state <= INIT;
+                n_state = INIT;
         end
         INIT: begin
-            if (PO[0] == read) n_state <= READ;
-            else n_state <= WRITE_1;
+            if (PO[0] == read) n_state = READ;
+            else n_state = WRITE_1;
+            
             if (c_start) begin
-                n_state <= INIT;
-                n_start <= 0;
-                // Reset counters         #REVISIT
+                n_state = INIT;
+                n_start = 0;
+                internal_reset = 1;
             end
+            else 
+                internal_reset = 0;
             if (c_stop) begin
-                n_state <= IDLE;
-                n_stop <= 0;
+                n_state = IDLE;
+                n_stop = 0;    
+                internal_reset = 1;
             end
+            else 
+                internal_reset = 0;                
         end
         WRITE_1:begin
-            n_state <= WRITE_2;
-            if (c_start) begin
-                    n_state <= INIT;
-                    n_start <= 0;
-                    // Reset counters         #REVISIT
+            n_state = WRITE_2;
+             if (c_start) begin
+                n_state = INIT;
+                n_start = 0;
+                internal_reset = 1;
             end
+            else 
+                internal_reset = 0;
             if (c_stop) begin
-                n_state <= IDLE;
-                n_stop <= 0;
-            end 
-         end
+                n_state = IDLE;
+                n_stop = 0;    
+                internal_reset = 1;
+            end
+            else 
+                internal_reset = 0;                
+        end
         WRITE_2: begin
-            if (opcode == alternate) n_state <= WRITE_1;
+            if (opcode == alternate) n_state = WRITE_1;
             else if (opcode == burst) begin
-                n_state <= WRITE_2;
-                address_reg_next <= address_reg_current + 1; // First register will be skipped
-            end 
-            if (c_start) begin
-                    n_state <= INIT;
-                    n_start <= 0;
-                    // Reset counters         #REVISIT
-            end
-            if (c_stop) begin
-                n_state <= IDLE;
-                n_stop <= 0;
+                n_state = WRITE_2;
+                address_reg_next = address_reg_current + 1; // First register will be skipped
             end 
             
+            if (c_start) begin
+                n_state = INIT;
+                n_start = 0;
+                internal_reset = 1;
+            end
+            else 
+                internal_reset = 0;
+            if (c_stop) begin
+                n_state = IDLE;
+                n_stop = 0;    
+                internal_reset = 1;
+            end
+            else 
+                internal_reset = 0;                
         end
         READ: begin
-            n_state <= READ;
-            address_reg_next <= address_reg_current + 1;
-            if (c_start) begin
-                    n_state <= INIT;
-                    n_start <= 0;
-                    // Reset counters         #REVISIT
-            end
-            if (c_stop) begin
-                n_state <= IDLE;
-                n_stop <= 0;
-            end 
-            
-        end
-endcase
-    
+            n_state = READ;
+            address_reg_next = address_reg_current + 1;
 
+            if (c_start) begin
+                n_state = INIT;
+                n_start = 0;
+                internal_reset = 1;
+            end
+            else 
+                internal_reset = 0;
+            if (c_stop) begin
+                n_state = IDLE;
+                n_stop = 0;    
+                internal_reset = 1;
+            end
+            else 
+                internal_reset = 0;                
+       end
+endcase
 end
 
 assign SDA = (send_ready == 1) ? send:SDA;       // #RECONFIRM    What to send when i dont want to control the line?

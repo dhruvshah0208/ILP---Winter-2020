@@ -27,7 +27,7 @@ input [N -1:0] data_in,
 input enable,
 input SCL,
 input tick,
-output send_ready,// Data ACtive
+output data_active,// Data ACtive
 output serial_output
 );
 // We have to wait for one clock cycle after the negedge of tick and then start sending the serial outputs. (Better to send between 2 negedges of SCL)
@@ -52,7 +52,7 @@ always @(negedge SCL) begin
     end
 end
 // Assign outputs
-assign send_ready = enable & output_ready;
+assign data_active = enable & output_ready;
 assign serial_output = (output_ready == 1) ? output_reg:'bx;
 endmodule
 

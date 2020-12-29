@@ -38,7 +38,7 @@ module register_block
 
     assign C_out = (Address == Addr) ? 1'b1:1'b0;
             
-    always @(clk) begin
+    always @(*) begin
         if (clk == 1'b1) begin        
             if (Control_in[1] == Read) begin
                 if (C_out == 1'b1) begin             // If Address Match
@@ -61,10 +61,6 @@ module register_block
                     Control_out = Control_in;       // Pass Everything as it is
                 end
             end
-        end
-        else begin
-            D_out = 8'bz;
-            Control_out = 2'bz;
         end
     end
 endmodule

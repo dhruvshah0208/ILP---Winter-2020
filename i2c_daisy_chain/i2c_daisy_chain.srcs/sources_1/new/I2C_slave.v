@@ -11,14 +11,14 @@ module I2C_slave
 (
 inout SDA,
 input SCL,
-output [7:0] data_out,
-output [1:0] control_first_block,
-input [1:0] control_last_block, // #REVISIT - RB will send 1 if they have acknowledged
-input  [7:0] data_in,
-output [7:0] address,
-output clk,
 input resetn // Active Low reset
 );
+
+wire [7:0] data_out;
+wire [1:0] control_first_block;
+wire [1:0] control_last_block; // #REVISIT - RB will send 1 if they have acknowledged
+wire  [7:0] data_in;
+wire [7:0] address;
 wire tick;
 reg internal_reset;wire reset;          // Active High Reset                                 
 wire [7:0] PO;                          // Parallel Output
@@ -45,7 +45,7 @@ posedge_counter DUT(.SCL(SCL),.tick(tick),.reset(reset));
 serial_input_parallel_output DUT1(.SCL(SCL),.tick(tick),.reset(reset),.PO(PO),.SDA(SDA));  
 parallel_input_serial_output DUT2(.data_in(data_in),.enable(enable_piso_wire),.SCL(SCL),.tick(tick),.data_active(data_active),.serial_output(piso_output));
 start_stop_detectors DUT3(.SCL(SCL),.SDA(SDA),.resetn(resetn),.start(start_condition),.stop(stop_condition));
-
+registers DUT4(.data_in(data_out),.data_out(data_in),.control_in(control_first_block),.control_out(control_last_block),.Addre(address),.clk(tick));
 
 // Define the States 
 parameter INIT = 3'b000;
@@ -216,7 +216,6 @@ endcase
 end
 
 assign SDA = (send_ready == 1) ? send:SDA;       // #RECONFIRM    What to send when i dont want to control the line?
-assign clk = tick;
 assign address = address_reg_current;      // Garbage Value
 assign control_first_block = (tick == 1) ? control_reg:8'h00;  // Garbage Value 
 assign data_out = (tick == 1) ? data_reg:8'h00;                // Garbage Value 

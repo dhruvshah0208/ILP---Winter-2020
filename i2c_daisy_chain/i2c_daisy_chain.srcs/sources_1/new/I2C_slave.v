@@ -11,7 +11,11 @@ module I2C_slave
 (
 inout SDA,
 input SCL,
-input resetn // Active Low reset
+input resetn, // Active Low reset
+//External Interface
+input [7:0] Addr_external,
+output [7:0] Data_external_out,
+input clk_external
 );
 
 wire [7:0] data_out;
@@ -45,7 +49,7 @@ posedge_counter DUT(.SCL(SCL),.tick(tick),.reset(reset));
 serial_input_parallel_output DUT1(.SCL(SCL),.tick(tick),.reset(reset),.PO(PO),.SDA(SDA));  
 parallel_input_serial_output DUT2(.data_in(data_in),.enable(enable_piso_wire),.SCL(SCL),.tick(tick),.data_active(data_active),.serial_output(piso_output));
 start_stop_detectors DUT3(.SCL(SCL),.SDA(SDA),.resetn(resetn),.start(start_condition),.stop(stop_condition));
-registers DUT4(.data_in(data_out),.data_out(data_in),.control_in(control_first_block),.control_out(control_last_block),.Addre(address),.clk(tick));
+registers DUT4(.clk_external(clk_external),.Data_external_out(Data_external_out),.Addr_external(Addr_external),.resetn(resetn),.data_in(data_out),.data_out(data_in),.control_in(control_first_block),.control_out(control_last_block),.Addre(address),.clk(tick));
 
 // Define the States 
 parameter INIT = 3'b000;

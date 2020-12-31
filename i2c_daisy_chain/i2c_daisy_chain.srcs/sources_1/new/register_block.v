@@ -28,18 +28,27 @@ module register_block
     input [7:0] Addr,
     input clk,
     output reg [7:0] D_out,
-    output reg [1:0] Control_out   
-    
+    output reg [1:0] Control_out,
+    input resetn,               // Reset Signal - active low
+    // External Interface Signals
+    input [7:0] Addr_external,
+    input clk_external,   
+    output reg [7:0] Data_external_out,
+    output reg valid
     );
     reg [7:0] q; // This is the Storage element of the Register Block
     wire C_out; // This contains the output of Comparator
     
     parameter Read = 1'b1,Write = 1'b0; // CHANGE THE ADDRESS OF REGISTER BLOCK
-
-    assign C_out = (Address == Addr) ? 1'b1:1'b0;
+    
+    always @(negedge resetn) begin
+        if (!resetn)
+            q <= 8'b00000000;
+    end
+    
             
     always @(*) begin
-        if (clk == 1'b1) begin        
+        if (clk) begin        
             if (Control_in[1] == Read) begin
                 if (C_out == 1'b1) begin             // If Address Match
                     D_out = q;
@@ -54,15 +63,29 @@ module register_block
                 if (C_out == 1'b1) begin             // Address Match
                     q = D_in;
                     Control_out = {Control_in[1],1'b1};     // Write,ACK    
-                    D_out = 8'bz;
+                    //D_out = 8'bz;
                 end
                 else if (C_out == 1'b0) begin        // If Address Does not Match
                     D_out = D_in;
                     Control_out = Control_in;       // Pass Everything as it is
                 end
             end
+            
         end
+        
+        if (clk_external) begin
+            if(Addr_external == Address) begin
+                 Data_external_out = q;
+                 valid = 1;   
+            end else
+                valid = 0; // This indicates Address is not matched
+        end
+        else 
+            valid = 0;
     end
+    
+assign C_out = (Address == Addr) ? 1'b1:1'b0;
+        
 endmodule
 
 

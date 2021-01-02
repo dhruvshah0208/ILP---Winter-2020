@@ -28,20 +28,19 @@ reg output_ready;
 
 always @(posedge SCL) begin
     if (tick & enable) begin
-        output_ready = 0;
-        if (activate) 
-            data_reg = data_in;
-        activate = 0;
+        output_ready <= 0;
+        activate <= 0;
     end
-    else if (enable) begin
-        activate = 1;
-     end else
-        activate = 0;
+    else if (enable & ~activate) begin
+        activate <= 1;
+        data_reg <= data_in;
+        output_ready <= 0;
+     end 
             
     if (activate) begin    
-        output_ready = 1;
-        output_reg = data_reg[N-1];
-        data_reg = {data_reg[N-2:0],1'b0}; // Garbage Value      
+        output_ready <= 1;
+        output_reg <= data_reg[N-1]; // Send the MSB first
+        data_reg <= {data_reg[N-2:0],1'b0}; // Garbage Value      
     end
 end
 

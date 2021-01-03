@@ -2,7 +2,7 @@
 
 module registers
  // N = 3 - Total Register Banks
-#(parameter n1 = 1,n2 = 1,n3 = 1)
+#(parameter n1 = 8,n2 = 10,n3 = 116)
 (
   input [7:0] data_in,
   input [1:0] control_in,

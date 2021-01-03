@@ -3,6 +3,8 @@
 // Engineer: Dhruv Shah
 // Create Date: 12/22/2020 09:25:02 PM
 // Module Name: I2C_slave
+
+// IMPORTANT TAGS - Change Later
 //////////////////////////////////////////////////////////////////////////////////
 
 
@@ -40,10 +42,10 @@ wire data_active,piso_output;
 wire start_condition;
 wire stop_condition;
 // parameters
-parameter read = 1'b1;  
-parameter write = 1'b0;
-parameter alternate = 1'b1;
-parameter burst = 1'b0;
+localparam read = 1'b1;  
+localparam write = 1'b0;
+localparam alternate = 1'b1;
+localparam burst = 1'b0;
 
 posedge_counter DUT(.SCL(SCL),.tick(tick),.reset(reset));  
 serial_input_parallel_output DUT1(.SCL(SCL),.tick(tick),.reset(reset),.PO(PO),.SDA(SDA));  
@@ -52,17 +54,17 @@ start_stop_detectors DUT3(.SCL(SCL),.SDA(SDA),.resetn(resetn),.start(start_condi
 registers DUT4(.clk_external(clk_external),.Data_external_out(Data_external_out),.Addr_external(Addr_external),.resetn(resetn),.data_in(data_out),.data_out(data_in),.control_in(control_first_block),.control_out(control_last_block),.Addre(address),.clk(tick));
 
 // Define the States 
-parameter INIT = 3'b000;
-parameter READ = 3'b001;
-parameter WRITE_1 = 3'b011;   // Addr
-parameter WRITE_2 = 3'b100;   // Data
-parameter IDLE= 3'b101;   // Data
+localparam INIT = 3'b000;
+localparam READ = 3'b001;
+localparam WRITE_1 = 3'b011;   // Addr
+localparam WRITE_2 = 3'b100;   // Data
+localparam IDLE= 3'b101;   // Data
 
 // Initialize Values
 always @(negedge SCL or negedge resetn) begin  // State transitions have to occur at posedge of tick
     if (!resetn) begin // Reset and Initialize all values of reg here
         c_state <= IDLE;
-        address_reg_current <= 8'h00; // Random Initial Value - CHange Later
+        address_reg_current <= 8'h00; // Random Initial Value - Change Later
     end else begin
         c_state <= n_state;
         address_reg_current <= address_reg_next;
@@ -77,11 +79,11 @@ always @(posedge SCL) begin
         INIT: begin
             enable_piso <= 0;
             if (tick) begin
-                if (PO[7:1] == Address) begin   // MSB is sent first through i2c
+                if (PO[6:0] == Address) begin   // MSB is sent first through i2c - (R/W) bit
                     // SEND ACK  
                     i2c_slave_ack <= 1;
                 end  
-                if(PO[0] == read) begin
+                if(PO[7] == read) begin
                     control_reg <= {read,1'b0};
                     enable_piso <= 1;
                 end
@@ -101,7 +103,7 @@ always @(posedge SCL) begin
    
             enable_piso <= 0;
             if (tick) begin 
-                address_reg_next <= PO[6:0];
+                //address_reg_next <= PO[6:0]; - Shifted to Combo Logic Block
                 opcode <= PO[7];
                 i2c_reg_ack <= 1;
                 control_reg <= {write,1'b0};
@@ -143,10 +145,10 @@ always @(*) begin  // NEXT STATE COMBO LOGIC
                 internal_reset = 0;
         end
         INIT: begin
-            if (PO[0] == read & tick == 1) begin
+            if (PO[7] == read & tick == 1) begin
                 n_state = READ;
             end
-            else if (PO[0] == write & tick == 1) begin
+            else if (PO[7] == write & tick == 1) begin
                 n_state = WRITE_1;
             end
             if (start_condition) begin
@@ -163,8 +165,10 @@ always @(*) begin  // NEXT STATE COMBO LOGIC
                 internal_reset = 0;                
         end
         WRITE_1:begin
-            if (tick == 1) 
+            if (tick == 1) begin
                 n_state = WRITE_2;
+                address_reg_next <= PO[6:0];
+            end
             if (start_condition) begin
                 n_state = INIT;
                 internal_reset = 1;
@@ -219,7 +223,7 @@ always @(*) begin  // NEXT STATE COMBO LOGIC
 endcase
 end
 
-assign SDA = (send_ready == 1) ? send:SDA;       // #RECONFIRM    What to send when i dont want to control the line?
+assign SDA = (send_ready == 1) ? send:8'bzzzzzzzz;       // #RECONFIRM    What to send when i dont want to control the line? - Z
 assign address = address_reg_current;      // Garbage Value
 assign control_first_block = (tick == 1) ? control_reg:8'h00;  // Garbage Value 
 assign data_out = (tick == 1) ? data_reg:8'h00;                // Garbage Value 

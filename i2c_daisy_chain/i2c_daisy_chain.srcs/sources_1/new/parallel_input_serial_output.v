@@ -25,6 +25,10 @@ reg activate;
 reg [N-1:0] data_reg;
 reg output_reg;
 reg output_ready;
+reg c_state,n_state;
+
+localparam Wait = 1'b1;
+localparam Begin = 1'b0;
 
 always @(posedge SCL) begin
     if (tick & enable) begin
@@ -43,7 +47,6 @@ always @(posedge SCL) begin
         data_reg <= {data_reg[N-2:0],1'b0}; // Garbage Value      
     end
 end
-
 //Assign outputs
 assign serial_output = output_reg;
 assign data_active = enable & output_ready;

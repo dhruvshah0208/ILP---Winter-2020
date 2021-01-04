@@ -25,6 +25,7 @@ module start_stop_detectors
 input SDA,
 input SCL,
 input resetn,
+input send_ready,
 output start,
 output stop
 );
@@ -44,7 +45,7 @@ always @(posedge SDA or negedge SCL ) begin // STOP CONDITION
         stop_reg <= 0; 
 end
 
-assign start = (start_reg & resetn) ? SCL : 0;
-assign stop  = (stop_reg & resetn)  ? SCL : 0;    
+assign start = (start_reg & resetn & !send_ready) ? SCL : 0;
+assign stop  = (stop_reg & resetn & !send_ready)  ? SCL : 0;    
 
 endmodule

@@ -10,23 +10,29 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 module posedge_counter
-#(parameter N=4)
 (
 input SCL,reset,
-output tick   // q added for simulation purposes
+output tick  
 );
 //signal declaration
-reg [N-1:0] r_reg;
-wire [N-1:0] r_next;
-always @(posedge SCL) begin
-    r_reg <= r_next;
+reg [3:0] r_reg;
+reg [3:0] r_next;
+always @(posedge SCL or posedge reset) begin
+    if (reset) 
+        r_reg <= 0;
+    else 
+        r_reg <= r_next;
 end
 // Next State Logic
-assign r_next = (reset == 1'b1) ? 0:
-                (r_reg == 2**(N-1))? 0:r_reg + 1;
+always @(*) begin
+    if (r_reg == 8)
+        r_next = 0;
+    else
+        r_next = r_reg + 1;
+end
     
 
 // output logic
-assign tick = (r_reg==2**(N-1)-1) ? SCL : 1'b0;  // Clock Masking
+assign tick = (r_reg==8) ? SCL : 1'b0;  // Clock Masking
 
 endmodule

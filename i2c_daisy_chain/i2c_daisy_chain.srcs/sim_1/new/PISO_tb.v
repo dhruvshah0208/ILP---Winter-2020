@@ -15,19 +15,19 @@ initial begin
 end 
 initial begin
   tick=0;
-  #1;
+  #2;enable = 1;
   tick = 1;
   forever #18 tick = 1;
     
 end 
 initial begin
-
+    #1;
     forever #2 tick = 0;  
 end
 
 initial begin 
 
-enable = 1;
+enable = 0;
 #1;   
 #1;   data_in = 8'b10100011;
 #8;   data_in = 'bz;

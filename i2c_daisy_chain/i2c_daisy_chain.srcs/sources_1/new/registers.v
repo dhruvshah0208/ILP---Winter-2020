@@ -7,20 +7,20 @@ module registers
   input [7:0] data_in,
   input [1:0] control_in,
   input clk,
-  input [7:0] Addre,
+  input [6:0] Addre, // Address is 7 bit
   output [7:0] data_out,
   output [1:0] control_out,
   input resetn,
   // Part of External Interface
-  input [7:0] Addr_external,
+  input [6:0] Addr_external,
   output reg [7:0] Data_external_out,
   input clk_external
 );
      // N = 3 - Total Register Banks
      // The rest can be changed
-     localparam addr1 = 8'h0A;
-     localparam addr2 = 8'h1A;
-     localparam addr3 = 8'h2A;
+     localparam addr1 = 7'b0000000;
+     localparam addr2 = 7'b0010000;
+     localparam addr3 = 7'b1000000;
      wire [0:8*(n1+n2+n3) - 1] external_data_connect;
      wire [0:n1+n2+n3 - 1] valid_connect;  
      wire [0:10*(n1+n2+n3-1) - 1] connect;

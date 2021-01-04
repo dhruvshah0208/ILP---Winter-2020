@@ -30,14 +30,26 @@ reg tick;
 wire [N-1:0] PO;   
 
 serial_input_parallel_output DUT1(.SCL(SCL),.tick(tick),.reset(reset),.PO(PO),.SDA(SDA));  // INSTANTIATE THE DESIGN UNDER TEST
-
 initial begin
   SCL=0;
      forever #1 SCL = ~SCL;  
 end 
+initial begin
+  tick=0;
+  #2;
+  tick = 1;
+  forever #18 tick = 1;
+    
+end 
+initial begin
+    #1;
+    forever #2 tick = 0;  
+end
+
 initial begin 
-reset= 1;
-#2;   reset = 0;tick =0;
+reset= 0;
+#1;
+#2;   reset = 1;
 #2;   SDA  = 1;  
 #2;   SDA  = 0;  
 #2;   SDA  = 1;  

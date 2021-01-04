@@ -21,17 +21,17 @@
 
 
 module register_block
-    #(parameter Address = 8'b00000000)
+    #(parameter Address = 8'b0000000)
     (
     input [7:0] D_in,
     input [1:0] Control_in, // {R/W,ACK}
-    input [7:0] Addr,
+    input [6:0] Addr,
     input clk,
     output [7:0] data_out,
     output [1:0] Control_out,
     input resetn,               // Reset Signal - active low
     // External Interface Signals
-    input [7:0] Addr_external,
+    input [6:0] Addr_external,
     input clk_external,   
     output reg [7:0] Data_external_out,
     output reg valid,

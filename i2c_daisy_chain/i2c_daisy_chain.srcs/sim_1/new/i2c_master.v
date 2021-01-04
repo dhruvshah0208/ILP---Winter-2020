@@ -28,17 +28,6 @@ reg resetn;
 reg [7:0] Addr_external;
 wire [7:0] Data_external_out;
 reg clk_external;
-//Debugging Signals
-wire send_ready;
-wire [2:0] state,next_state;
-wire tick;
-wire i2c_slave_ack_wire;
-wire i2c_reg_ack_wire;
-wire ack_done_wire;
-wire start_condition;
-wire stop_condition;
-wire [7:0] PO;
-
 // Change these values accordingly later
 localparam t_high = 10;
 localparam t_low = 10;
@@ -101,16 +90,14 @@ integer i;
 
 // Slave instantiation
 reg ack;
-I2C_slave slave (SDA,SCL,resetn,Addr_external,Data_external_out,clk_external,
-                 send_ready,state,next_state,tick,i2c_slave_ack_wire,i2c_reg_ack_wire,ack_done_wire,start_condition,
-                 stop_condition);
+I2C_slave slave (SDA,SCL,resetn,Addr_external,Data_external_out,clk_external);
 // Sequential Instructions
     initial begin
     ack = 0;resetn = 1;
     #t_low resetn = 0;
     #t_high resetn = 1;
     I2C_start();
-    I2C_send(8'b01100010); // W + Slave Address
+    I2C_send(8'b11100010); // W + Slave Address
     receive_ACK(ack);
     I2C_send(8'b10000010);// Alternate + Reg Address
     receive_ACK(ack);

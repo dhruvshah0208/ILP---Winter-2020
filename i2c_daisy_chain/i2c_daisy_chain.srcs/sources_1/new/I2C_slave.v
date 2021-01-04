@@ -17,30 +17,19 @@ input resetn, // Active Low reset
 //External Interface
 input [7:0] Addr_external,
 output [7:0] Data_external_out,
-input clk_external,
-// Debugging Signal
-output reg send_ready,
-output [2:0] state,
-output [2:0] next_state,
-output tick,
-output i2c_slave_ack_wire,
-output i2c_reg_ack_wire,
-output ack_done_wire,
-output start_condition,
-output stop_condition,
-output [7:0] PO
+input clk_external
 );
 
-//reg send_ready;
+reg send_ready;
 wire send_ready_wire;
 wire [7:0] data_out;
 wire [1:0] control_first_block;
 wire [1:0] control_last_block; // #REVISIT - RB will send 1 if they have acknowledged
 wire  [7:0] data_in;
 wire [7:0] address;
-//wire tick;
+wire tick;
 reg internal_reset;wire reset;          // Active High Reset                                 
-//wire [7:0] PO;                          // Parallel Output
+wire [7:0] PO;                          // Parallel Output
 reg enable_piso;
 wire enable_piso_wire;                                                          
 reg [2:0] c_state;                      // STATES - INIT,WRITE_1,WRITE_2,READ,IDLE
@@ -54,8 +43,8 @@ reg i2c_reg_ack;
 reg [6:0] address_reg_next;
 reg [6:0] address_reg_current;
 wire data_active,piso_output;
-//wire start_condition;
-//wire stop_condition;
+wire start_condition;
+wire stop_condition;
 
 reg ack_done;
 // parameters
@@ -258,12 +247,7 @@ assign control_first_block = (tick == 1) ? control_reg:8'h00;  // Garbage Value
 assign data_out = (tick == 1) ? data_reg:8'h00;                // Garbage Value 
 assign reset = internal_reset;
 assign enable_piso_wire = enable_piso;
-assign state = c_state;
-assign next_state = n_state;
-assign i2c_slave_ack_wire = i2c_slave_ack;
-assign i2c_reg_ack_wire = i2c_reg_ack;
 assign send_ready_wire = send_ready;
-assign ack_done_wire = ack_done;
 endmodule
 
 

@@ -63,9 +63,9 @@ registers DUT4(.clk_external(clk_external),.Data_external_out(Data_external_out)
 // Define the States 
 localparam INIT = 3'b000;
 localparam READ = 3'b001;
-localparam WRITE_1 = 3'b011;   // Addr
-localparam WRITE_2 = 3'b100;   // Data
-localparam IDLE= 3'b101;   // Data
+localparam WRITE_1 = 3'b010;   // Addr
+localparam WRITE_2 = 3'b011;   // Data
+localparam IDLE= 3'b100;   // Data
 
 // Initialize Values
 always @(negedge SCL or negedge resetn) begin  // State transitions have to occur at posedge of tick
@@ -101,7 +101,7 @@ always @(posedge SCL) begin
             else if (i2c_reg_ack & !tick) begin 
                  send <= ~control_last_block[0];  // #REVISIT - Check the sign
                  send_ready <= 1;
-                 ack_done <= 1;;  
+                 ack_done <= 1;  
             end
             else if (!i2c_reg_ack)
                  ack_done <= 0;
@@ -137,14 +137,22 @@ always @(*) begin  // NEXT STATE COMBO LOGIC
     
         IDLE:begin
             if(start_condition) begin
-                n_state = INIT;
-                internal_reset = 1;
+                n_state <= INIT;
+                internal_reset <= 1;
              end
              else  
-                internal_reset = 0;             
+                internal_reset <= 0;             
         end
         INIT: begin
-            if (tick) begin
+            if (start_condition) begin
+            n_state <= INIT;
+            internal_reset <= 1;
+            end
+            else if (stop_condition) begin
+                n_state <= IDLE;
+                internal_reset <= 1;
+            end
+            else if (tick) begin
                 if (PO[6:0] == Address) begin   // MSB is sent first through i2c - (R/W) bit
                     // SEND ACK  
                     i2c_slave_ack <= 1;
@@ -152,91 +160,81 @@ always @(*) begin  // NEXT STATE COMBO LOGIC
                 if(PO[7] == read) begin
                     control_reg <= {read,1'b0};
                     enable_piso <= 1;
-                    n_state = READ;
+                    n_state <= READ;
                 end
                 else if (PO[7] == write)
-                    n_state = WRITE_1;
+                    n_state <= WRITE_1;
             end 
+            else 
+                internal_reset <= 0;                
+        end
+        WRITE_1:begin // state 3
             if (start_condition) begin
-                n_state = INIT;
-                internal_reset = 1;
+                n_state <= INIT;
+                internal_reset <= 1;
             end
             else if (stop_condition) begin
-                n_state = IDLE;
-                internal_reset = 1;
+                n_state <= IDLE;    
+                internal_reset <= 1;
             end
-            else 
-                internal_reset = 0;                
-        end
-        WRITE_1:begin
-            if (tick) begin 
+            else if (tick & SCL) begin 
                 opcode <= PO[7];
                 i2c_reg_ack <= 1;
                 control_reg <= {write,1'b0};
-                n_state = WRITE_2;
+                n_state <= WRITE_2;  
                 address_reg_next <= PO[6:0];
             end
-            if (i2c_slave_ack & !tick & ack_done) begin 
+            else if (i2c_slave_ack & !tick & ack_done) begin 
                 i2c_slave_ack <= 0;
             end
             else if (i2c_reg_ack & !tick & ack_done) begin 
                  i2c_reg_ack <= 0;
             end        
+            else 
+                internal_reset <= 0;                
+        end
+        WRITE_2: begin // state 4
             if (start_condition) begin
-                n_state = INIT;
-                internal_reset = 1;
+                 n_state <= INIT;
+                 internal_reset <= 1;
             end
             else if (stop_condition) begin
-                n_state = IDLE;    
-                internal_reset = 1;
+                 n_state <= IDLE; 
+                 internal_reset <= 1;
             end
-            else 
-                internal_reset = 0;                
-        end
-        WRITE_2: begin
-            if (i2c_reg_ack & !tick & ack_done) begin 
-                i2c_reg_ack <= 0;
-            end
-            if (tick) begin
+            else if (opcode == alternate & tick == 1) n_state <= WRITE_1;
+            else if (opcode == burst & tick == 1) begin
+                n_state <= WRITE_2;
+                address_reg_next <= address_reg_current + 1; // First register will be skipped
+            end 
+            else if (tick) begin
                  i2c_reg_ack <= 1;
                  control_reg <= {write,1'b0};
                  data_reg <= PO[7:0];   
              end 
-            
-            if (opcode == alternate & tick == 1) n_state = WRITE_1;
-            else if (opcode == burst & tick == 1) begin
-                n_state = WRITE_2;
-                address_reg_next = address_reg_current + 1; // First register will be skipped
-            end 
-            
-            if (start_condition) begin
-                n_state = INIT;
-                internal_reset = 1;
-            end
-            else if (stop_condition) begin
-                n_state = IDLE; 
-                internal_reset = 1;
-            end
-            else 
-                internal_reset = 0;                
+             else if (i2c_reg_ack & !tick & ack_done) begin 
+                 i2c_reg_ack <= 0;
+             end 
+             else 
+                 internal_reset <= 0;                
         end
         READ: begin  // #REVISIT
-            if (tick) begin        
-                n_state = READ;
-                control_reg <= {read,1'b1}; // Garbage Value in ACk
-                enable_piso <= 1;       
-                address_reg_next = address_reg_current + 1;
-            end
             if (start_condition) begin
-                n_state = INIT;
-                internal_reset = 1;
+                n_state <= INIT;
+                internal_reset <= 1;
             end
             else if (stop_condition) begin
-                n_state = IDLE; 
-                internal_reset = 1;
+                n_state <= IDLE; 
+                internal_reset <= 1;
+            end
+            else if (tick) begin        
+                n_state <= READ;
+                control_reg <= {read,1'b1}; // Garbage Value in ACk
+                enable_piso <= 1;       
+                address_reg_next <= address_reg_current + 1;
             end
             else 
-                internal_reset = 0;                
+                internal_reset <= 0;                
        end
 endcase
 end

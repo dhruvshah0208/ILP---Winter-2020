@@ -85,7 +85,10 @@ integer i;
 
     task receive_ACK;
     output received_ACK;
+        begin
+        SDA_reg = 8'bzzzzzzzz;
         @(negedge SCL) received_ACK = !SDA;
+    end
     endtask
 
 // Slave instantiation
@@ -97,7 +100,7 @@ I2C_slave slave (SDA,SCL,resetn,Addr_external,Data_external_out,clk_external);
     #t_low resetn = 0;
     #t_high resetn = 1;
     I2C_start();
-    I2C_send(8'b11100010); // W + Slave Address
+    I2C_send(8'b01100010); // W + Slave Address
     receive_ACK(ack);
     I2C_send(8'b10000010);// Alternate + Reg Address
     receive_ACK(ack);

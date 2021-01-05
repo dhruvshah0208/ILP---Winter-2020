@@ -31,8 +31,8 @@ reg clk_external;
 // Change these values accordingly later
 localparam t_high = 10;
 localparam t_low = 10;
-localparam t_wait_start_stop = t_high/10;   
-localparam t_wait_send = t_high/10;
+localparam t_wait_start_stop = t_high/2;   
+localparam t_wait_send = t_high/2;
 integer i;   
 // CLK generation
     initial begin
@@ -93,21 +93,25 @@ integer i;
 
 // Slave instantiation
 reg ack;
-I2C_slave slave (SDA,SCL,resetn,Addr_external,Data_external_out,clk_external);
+reg [7:0] received;
+i2c_slave_new slave (SDA,SCL,resetn);
 // Sequential Instructions
     initial begin
     ack = 0;resetn = 1;
     #t_low resetn = 0;
     #t_high resetn = 1;
     I2C_start();
-    I2C_send(8'b01100010); // W + Slave Address
+    I2C_send(8'b01010100); // W + Slave Address
     receive_ACK(ack);
-    I2C_send(8'b10000010);// Alternate + Reg Address
+    I2C_send(8'b10000000); // X + Reg Address
     receive_ACK(ack);
-    I2C_send(8'b00000000);// Data
+    I2C_start();
+    I2C_send(8'b11010100); // R + Slave Address        
     receive_ACK(ack);
-    I2C_send(8'b10000100);// Alternate + Reg Address
-    receive_ACK(ack);
+    I2C_receive(received); // Data        
+    send_ACK();
+    I2C_receive(received); // Data        
+    send_ACK();
     I2C_stop();                    
     end
 

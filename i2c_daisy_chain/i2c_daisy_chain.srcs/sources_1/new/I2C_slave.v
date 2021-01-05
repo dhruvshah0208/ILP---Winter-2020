@@ -38,7 +38,7 @@ reg opcode;
 reg send;
 reg [7:0] data_reg;
 reg [1:0] control_reg;
-reg i2c_slave_ack ;
+reg i2c_slave_ack;
 reg i2c_reg_ack;
 reg [6:0] address_reg_next;
 reg [6:0] address_reg_current;

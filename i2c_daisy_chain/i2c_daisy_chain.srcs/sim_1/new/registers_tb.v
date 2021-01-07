@@ -53,7 +53,7 @@ resetn = 1;clk = 0;clk_external = 0;
 // Read reset data
 #1;
 clk = 1;
-Addre = 8'h1A;
+Addre = 7'b0000000;
 control_in = 2'b00;
 #1;
 clk = 0;
@@ -71,31 +71,32 @@ clk = 0;
 // Case 2: Write with correct Address
 #1;
 clk = 1;
-Addre = 8'h0A;
-data_in = 8'b11101100;
+Addre = 7'b0000000;
 control_in = 2'b10;
-#1;
+#0.1;
+data_in = 8'b11101100;
+#0.9;
 clk = 0;
-/*
-// Case 3: Read with incorrect Address
+
+//Case 3: Read with correct Address
 #1;
 clk = 1;
 Addre = 8'b00000000;
 control_in = 2'b00;
 #1;
 clk = 0;
-*/
+
 // Case 4: Read with correct Address
 #1;
 clk_external = 1;
-Addr_external = 8'h0A;
+Addr_external = 7'b0010000;
 
 #1;
 clk_external = 0;
 
 #1;
 clk_external = 1;
-Addr_external = 8'h1A;
+Addr_external = 7'b0000000;
 #1;
 clk_external = 0;
 

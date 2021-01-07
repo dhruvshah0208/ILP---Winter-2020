@@ -94,25 +94,45 @@ integer i;
 // Slave instantiation
 reg ack;
 reg [7:0] received;
-i2c_slave_new slave (SDA,SCL,resetn);
+i2c_slave_new slave (SDA,SCL,resetn,Addr_external,Data_external_out,clk_external);
 // Sequential Instructions
     initial begin
+    Addr_external = 7'b0000000;clk_external = 0;
     ack = 0;resetn = 1;
     #t_low resetn = 0;
     #t_high resetn = 1;
     I2C_start();
     I2C_send(8'b01010100); // W + Slave Address
     receive_ACK(ack);
-    I2C_send(8'b10000000); // X + Reg Address
+    I2C_send(8'b10000000); // opcode + Reg Address
     receive_ACK(ack);
+    I2C_send(8'b11010100); // 8 bit data        
+    receive_ACK(ack);
+    I2C_send(8'b10010000); // opcode + Reg Address
+    receive_ACK(ack);
+    I2C_send(8'b11010100); // 8 bit data        
+    receive_ACK(ack);
+    I2C_stop();
+    clk_external = 1;
+/*
+    ack = 0;resetn = 1;
+    #t_low resetn = 0;
+    #t_high resetn = 1;
     I2C_start();
-    I2C_send(8'b11010100); // R + Slave Address        
+    I2C_send(8'b01010100); // W + Slave Address
     receive_ACK(ack);
-    I2C_receive(received); // Data        
-    send_ACK();
-    I2C_receive(received); // Data        
-    send_ACK();
-    I2C_stop();                    
+    I2C_send(8'b10000000); // opcode + Reg Address
+    receive_ACK(ack);
+    I2C_send(8'b11010100); // 8 bit data        
+    receive_ACK(ack);
+    I2C_start();    
+    I2C_send(8'b11010100); // R + Slave Address
+    receive_ACK(ack);
+    I2C_receive(received);
+    send_ACK();    
+    I2C_stop();
+*/
+ 
     end
 
 //assign statements

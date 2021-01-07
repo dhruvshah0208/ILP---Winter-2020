@@ -49,16 +49,15 @@ reg [6:0] address_reg_next;
 reg [6:0] address_reg_current;
 reg send_ready;
 reg send_value;
-wire [7:0] data_out;
-wire [1:0] control_first_block;
-reg [1:0] control_reg;
+reg [7:0] data_out;    // Data being sent to the RB
+reg [1:0] control_first_block;
+
 wire [1:0] control_last_block; 
 wire  [7:0] data_in;
 wire [7:0] address;
 wire tick;
 reg [7:0] data; // Contains the last 8 bits of data sent over i2c
 reg opcode_ff;
-reg [7:0] data_reg_out; // Data being sent to the register
 reg [7:0] data_reg_in;  // Data reg that stores the data coming from the RB
 
 
@@ -139,8 +138,9 @@ end
 
 READ: begin
     if (counter_reg == 9) begin
+        data_reg_in <= data_in;   
         send_ready <= 1;
-        send_value <= data_reg_in[7];
+        send_value <= data_in[7];
      end
      else if (counter_reg != 8) begin
         send_ready <= 1;
@@ -182,11 +182,12 @@ ACK: begin
             send_value <= 1;
         end 
     end
+/*
     else if (prev_state == READ & counter_reg == 8) begin
-        data_reg_in = data_in;
+        data_reg_in <= data_in;
         send_ready <= 0;
     end
-
+*/
 end
 endcase
 end
@@ -211,6 +212,8 @@ localparam burst = 1'b0;
 always @* begin
     // Default Values
     n_state = c_state;
+    data_out = 8'b00000000;
+    control_first_block = 2'b00;
     if (!resetn | stop) begin
         address_reg_current = 8'h0A; // Change this default value
         address_reg_next = 8'h0A;
@@ -251,7 +254,7 @@ always @* begin
                     n_state = WRITE_1;
                 end
                 else if (data[7] == read) begin
-                    control_reg = {read,1'b0};
+                    control_first_block = {read,1'b0};
                     // No need to assign any address - becoz the stored address will be sent
                     n_state = READ;
                 end
@@ -259,7 +262,7 @@ always @* begin
         end
         else if(prev_state == WRITE_1) begin
             if(tick) begin
-                control_reg = {write,1'b0};
+                control_first_block = {write,1'b0};
                 address_reg_current = data[6:0];
                 address_reg_next = data[6:0];
                 n_state = WRITE_2;
@@ -267,9 +270,9 @@ always @* begin
         end
         else if(prev_state == WRITE_2) begin
             if (tick) begin
-                control_reg = {write,1'b0};
+                control_first_block = {write,1'b0};
                 address_reg_current = address_reg_next;
-                data_reg_out = data[7:0];
+                data_out = data[7:0];
                 if(opcode_ff == burst) begin
                     n_state = WRITE_2;
                     address_reg_next = address_reg_current + 1;
@@ -282,7 +285,7 @@ always @* begin
         end
         else if(prev_state == READ) begin
             if(tick) begin
-                control_reg = {read,1'b0};
+                control_first_block = {read,1'b0};
                 address_reg_current = address_reg_next + 1;
                 address_reg_next = address_reg_current;
                 n_state = READ;
@@ -292,9 +295,7 @@ always @* begin
     endcase    
 end
 
-assign SDA = (send_ready) ? send_value:8'bzzzzzzzz;       // #RECONFIRM    What to send when i dont want to control the line? - Z
+assign SDA = (send_ready) ? send_value:1'bz;       // #RECONFIRM    What to send when i dont want to control the line? - Z
 assign address = address_reg_current;      // Garbage Value
-assign control_first_block = (tick == 1) ? control_reg:8'h00;  // Garbage Value 
-assign data_out = (tick == 1) ? data_reg_out:8'h00;                // Garbage Value 
 
 endmodule

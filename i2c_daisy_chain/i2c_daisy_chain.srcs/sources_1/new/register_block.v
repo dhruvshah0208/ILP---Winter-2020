@@ -37,54 +37,62 @@ module register_block
     output reg valid,
     output C_out
     );
-    reg [7:0] q; // This is the Storage element of the Register Block
+    reg [7:0] q_reg; // This is the Storage element of the Register Block
+    reg [7:0] q;
     reg [7:0] D_out; // This contains the output of Comparator
     reg [1:0] control_out;
-    localparam Read = 1'b0,Write = 1'b1; // CHANGE THE ADDRESS OF REGISTER BLOCK
+    localparam Read = 1'b1,Write = 1'b0; // CHANGE THE ADDRESS OF REGISTER BLOCK
     
-    always @(negedge resetn) begin
-        if (!resetn)
-            q <= 8'b00011000;
+    always @(negedge clk or negedge resetn) begin
+        if(!resetn) begin
+            q_reg <= 8'b00011000;
+        end
+        else 
+            q_reg <= q;
     end
     
     always @(*) begin
+        if(!resetn) 
+            q = 8'b00011000;
+//        q = q_reg;
         if (clk) begin
            if (Control_in[1] == Read) begin
                 if (C_out) begin             // If Address Match
-                    D_out <= q;
-                    control_out <= {Write,1'b1};     // Write,ACK
+                    D_out = q_reg;
+                    control_out = {Write,1'b1};     // Write,ACK
                     
                 end
                 else begin        // If Address Does not Match
-                    D_out <= D_in;
-                    control_out <= Control_in;       // Pass Everything as it is
+                    D_out = D_in;
+                    control_out = Control_in;       // Pass Everything as it is
                 end
             end 
             else if (Control_in[1] == Write) begin
                 if (C_out) begin             // Address Match
-                    q <= D_in;
-                    control_out <= {Control_in[1],1'b1};     // Write,ACK    
+                    q = D_in;
+                    control_out = {Control_in[1],1'b1};     // Write,ACK    
                     //D_out = 8'bz;
                 end
                 else begin        // If Address Does not Match
-                    D_out <= D_in;
-                    control_out <= Control_in;       // Pass Everything as it is
+                    D_out = D_in;
+                    control_out = Control_in;       // Pass Everything as it is
                 end
             end
         end
         else begin // when clk is 0
-            control_out <= {Read,1'b0};  // This will not allow the register blocks to be affected by previous transactions
+            control_out = {Read,1'b0};  // This will not allow the register blocks to be affected by previous transactions
         end
     end
     always @(*) begin
     if (clk_external) begin    
         if(Addr_external == Address) begin
-          Data_external_out <= q;
+          Data_external_out <= q_reg;
           valid <= 1;   
         end else
           valid <= 0; // This indicates Address is not matched
     end
     end
+
     
 assign C_out = (Address == Addr) ? 1:0;
 

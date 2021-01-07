@@ -262,7 +262,7 @@ always @* begin
         end
         else if(prev_state == WRITE_1) begin
             if(tick) begin
-                control_first_block = {write,1'b0};
+                control_first_block = {read,1'b0}; // If we send a write here then junk data maybe written to the registers
                 address_reg_current = data[6:0];
                 address_reg_next = data[6:0];
                 n_state = WRITE_2;
@@ -296,6 +296,6 @@ always @* begin
 end
 
 assign SDA = (send_ready) ? send_value:1'bz;       // #RECONFIRM    What to send when i dont want to control the line? - Z
-assign address = address_reg_current;      // Garbage Value
+assign address = (tick == 1)?address_reg_current:8'b11111111;      // Garbage Value - An Address which cant be attained by the register bank
 
 endmodule
